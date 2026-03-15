@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Financial Dashboard – สหกรณ์</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2333;--border:#30363d;
+  --text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;
+  --green:#3fb950;--yellow:#d29922;--red:#f85149;--purple:#bc8cff;--teal:#39d353;
+  --a1:#58a6ff;--a2:#bc8cff;--b:#3fb950;
+  --font:'Sarabun',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden;}
+
+/* ── LOCK OVERLAY ── */
+#lock-overlay{
+  position:fixed;inset:0;background:#0d1117;z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+}
+.lock-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:32px 28px;width:min(90vw,340px);text-align:center;
+}
+.lock-icon{font-size:40px;margin-bottom:16px;}
+.lock-box h2{font-size:16px;font-weight:700;margin-bottom:6px;}
+.lock-box p{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.5;}
+.lock-input{
+  width:100%;background:var(--bg);border:1px solid var(--border);border-radius:9px;
+  padding:12px 14px;font-size:18px;font-family:var(--mono);font-weight:700;
+  color:var(--accent);text-align:center;letter-spacing:6px;margin-bottom:12px;
+  transition:border-color .18s;
+}
+.lock-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(88,166,255,.15);}
+.lock-btn{
+  width:100%;background:var(--accent);color:#0d1117;border:none;border-radius:9px;
+  padding:13px;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;
+  transition:opacity .15s;
+}
+.lock-btn:active{opacity:.85;}
+.lock-error{font-size:12px;color:var(--red);margin-top:8px;height:16px;}
+.lock-skip{font-size:12px;color:var(--muted);margin-top:14px;cursor:pointer;text-decoration:underline;}
+
+/* ── HEADER ── */
+header{background:#0d1117;border-bottom:1px solid var(--border);padding:12px 15px 10px;
+       position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;}
+.hl h1{font-size:14px;font-weight:700;}
+.hl p{font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:1px;}
+.badge-row{display:flex;align-items:center;gap:6px;}
+.badge{font-size:9px;font-family:var(--mono);background:var(--surface2);border:1px solid var(--border);
+       color:var(--muted);padding:3px 9px;border-radius:20px;}
+.lock-indicator{font-size:10px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--border);
+                background:var(--surface2);color:var(--muted);transition:all .18s;}
+.lock-indicator:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex:1;min-width:80px;padding:10px 6px;font-family:var(--font);font-size:13px;font-weight:600;
+     color:var(--muted);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;white-space:nowrap;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(88,166,255,.05);}
+.tab:hover:not(.active){color:var(--text);}
+.tab.locked{opacity:.45;cursor:default;}
+
+/* ── PAGES ── */
+.page{display:none;padding:12px 12px 30px;animation:fi .22s ease;}
+.page.active{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── SECTION LABEL ── */
+.sl{font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1.8px;
+    color:var(--muted);margin:14px 0 7px;}
+.sl:first-child{margin-top:0;}
+
+/* ── INPUT PANEL ── */
+.input-panel{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+             overflow:hidden;margin-bottom:12px;}
+.ip-header{background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 13px;
+           font-size:9px;font-weight:700;font-family:var(--mono);color:var(--muted);
+           text-transform:uppercase;letter-spacing:1.2px;}
+.ip-cols{display:grid;grid-template-columns:1fr 78px 78px 78px;padding:5px 13px 0;gap:6px;}
+.ipcl{text-align:center;font-size:9px;font-family:var(--mono);font-weight:700;text-transform:uppercase;}
+.ipcl.a1{color:var(--a1);}.ipcl.a2{color:var(--a2);}.ipcl.b{color:var(--b);}
+.ip-row{display:grid;grid-template-columns:1fr 78px 78px 78px;align-items:center;
+        padding:8px 13px;border-bottom:1px solid var(--border);gap:6px;}
+.ip-row:last-child{border-bottom:none;}
+.ip-row.single{grid-template-columns:1fr 140px;}
+.ip-lbl{font-size:12px;color:var(--text);line-height:1.3;}
+.ip-lbl small{display:block;font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:1px;}
+.ifield{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;
+        padding:7px 8px;font-size:12px;font-family:var(--mono);font-weight:600;
+        text-align:right;color:var(--a1);-webkit-appearance:none;transition:border-color .15s;}
+.ifield:focus{outline:none;border-color:var(--a1);box-shadow:0 0 0 2px rgba(88,166,255,.15);}
+.ifield.p{color:var(--a2);}.ifield.p:focus{border-color:var(--a2);box-shadow:0 0 0 2px rgba(188,140,255,.15);}
+.ifield.g{color:var(--b);}.ifield.g:focus{border-color:var(--b);box-shadow:0 0 0 2px rgba(63,185,80,.15);}
+.ifield.y{color:var(--yellow);}
+select.ifield{cursor:pointer;}
+
+/* ── RECALC BAR (inline) ── */
+.recalc-inline{display:none;padding:10px 13px;border-top:1px solid var(--border);
+               background:var(--surface2);gap:8px;}
+.recalc-inline.show{display:flex;}
+.btn-save{flex:1;background:var(--accent);color:#0d1117;border:none;border-radius:8px;
+          padding:11px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;}
+.btn-save:active{opacity:.85;}
+.btn-cancel{background:var(--bg);color:var(--muted);border:1px solid var(--border);
+            border-radius:8px;padding:11px 12px;font-size:12px;font-family:var(--font);cursor:pointer;}
+
+/* ── RISK BAND ── */
+.risk-band{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:12px;}
+.rc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 8px;text-align:center;}
+.rc .rlbl{font-size:8px;color:var(--muted);font-family:var(--mono);letter-spacing:.5px;
+          text-transform:uppercase;margin-bottom:3px;}
+.rc .rval{font-size:13px;font-weight:700;font-family:var(--mono);}
+.rc .rsub{font-size:8px;color:var(--muted);margin-top:2px;}
+.ra .rval{color:var(--yellow);}.rt .rval{color:var(--a1);}.nl .rval{color:var(--teal);}
+
+/* ── SCENARIO TABLE ── */
+.sc-head{display:grid;grid-template-columns:108px 1fr 1fr 1fr;
+         background:var(--surface2);border:1px solid var(--border);
+         border-radius:10px 10px 0 0;overflow:hidden;}
+.sc-blank{border-right:1px solid var(--border);}
+.sc-hc{padding:8px 5px;text-align:center;font-size:11px;font-weight:700;
+       font-family:var(--mono);border-right:1px solid var(--border);}
+.sc-hc:last-child{border-right:none;}
+.sc-hc.a1{color:var(--a1);background:rgba(88,166,255,.07);}
+.sc-hc.a2{color:var(--a2);background:rgba(188,140,255,.07);}
+.sc-hc.b {color:var(--b); background:rgba(63,185,80,.07);}
+.sc-body{border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;}
+.sc-row{display:grid;grid-template-columns:108px 1fr 1fr 1fr;border-bottom:1px solid var(--border);transition:background .1s;}
+.sc-row:last-child{border-bottom:none;}
+.sc-row:hover:not(.grp){background:rgba(255,255,255,.015);}
+.sc-row.grp{background:var(--surface2);}
+.sc-cell{padding:8px 7px;font-size:11px;border-right:1px solid var(--border);line-height:1.25;}
+.sc-cell:last-child{border-right:none;}
+.sc-cell.lbl{color:var(--muted);}
+.sc-cell.glbl{color:var(--text);font-size:9px;font-weight:700;font-family:var(--mono);
+              text-transform:uppercase;letter-spacing:.8px;padding:6px 7px;grid-column:1/-1;}
+.sc-cell.val{font-family:var(--mono);text-align:right;color:var(--text);}
+.sc-cell.v1{color:var(--a1);}.sc-cell.v2{color:var(--a2);}.sc-cell.vb{color:var(--b);}
+.ok{color:var(--green);font-weight:700;}.bad{color:var(--red);font-weight:700;}
+
+/* ── LOCKED PAGE PLACEHOLDER ── */
+.locked-page{display:flex;flex-direction:column;align-items:center;justify-content:center;
+             min-height:40vh;gap:10px;color:var(--muted);}
+.locked-page .lp-icon{font-size:36px;}
+.locked-page h3{font-size:15px;font-weight:600;color:var(--text);}
+.locked-page p{font-size:12px;text-align:center;line-height:1.6;max-width:240px;}
+.btn-unlock{margin-top:8px;background:var(--surface2);border:1px solid var(--border);
+            color:var(--accent);border-radius:9px;padding:10px 24px;font-size:13px;
+            font-family:var(--font);font-weight:600;cursor:pointer;transition:all .18s;}
+.btn-unlock:hover{border-color:var(--accent);}
+
+/* ── REFERENCE / HISTORY TABLES ── */
+.ig{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:11px;}
+.ig-hdr{background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 13px;
+        font-size:9px;font-weight:700;font-family:var(--mono);color:var(--muted);
+        text-transform:uppercase;letter-spacing:1.2px;}
+.ref-row{display:flex;align-items:center;padding:9px 13px;border-bottom:1px solid var(--border);gap:10px;}
+.ref-row:last-child{border-bottom:none;}
+.ref-lbl{flex:1;font-size:12px;color:var(--text);line-height:1.3;}
+.ref-val{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--yellow);}
+.tscroll{overflow-x:auto;}
+.htable,.ptable{width:100%;border-collapse:collapse;}
+.htable{min-width:430px;}.ptable{min-width:360px;}
+.htable th,.ptable th{background:var(--surface2);padding:7px 8px;font-family:var(--mono);font-size:9px;
+                       color:var(--muted);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
+.htable th:first-child,.ptable th:first-child{text-align:left;}
+.htable td,.ptable td{padding:7px 8px;border-bottom:1px solid rgba(48,54,61,.5);
+                       text-align:right;font-family:var(--mono);font-size:11px;color:var(--text);}
+.htable td:first-child,.ptable td:first-child{text-align:left;color:var(--muted);font-family:var(--font);font-size:11px;}
+.htable tr:last-child td,.ptable tr:last-child td{border-bottom:none;}
+.c0{color:var(--yellow);}.c1{color:var(--a1);}.c2{color:var(--a2);}.c3{color:var(--b);}
+.gcard{background:linear-gradient(135deg,#1a2332,#1c2b1c);border:1px solid rgba(63,185,80,.25);
+       border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;
+       text-decoration:none;transition:all .18s;margin-bottom:10px;}
+.gcard:hover{border-color:var(--b);}
+.gicon{width:36px;height:36px;background:rgba(63,185,80,.12);border-radius:8px;
+       display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.gtext h3{font-size:13px;font-weight:700;color:var(--b);}
+.gtext p{font-size:11px;color:var(--muted);margin-top:1px;}
+.info-box{background:rgba(88,166,255,.05);border:1px solid rgba(88,166,255,.18);
+          border-radius:9px;padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.6;}
+.info-box strong{color:var(--accent);}
+
+/* TOAST */
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-8px);
+       background:var(--surface2);border:1px solid var(--border);color:var(--text);
+       padding:8px 16px;border-radius:9px;font-size:12px;opacity:0;
+       pointer-events:none;transition:all .22s;z-index:500;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media(min-width:560px){
+  .sc-head,.sc-row{grid-template-columns:130px 1fr 1fr 1fr;}
+  .sc-cell{font-size:12px;}
+  header{padding:13px 20px 11px;} .page{padding:14px 16px 30px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════ LOCK OVERLAY ══════════ -->
+<div id="lock-overlay">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <h2>Financial Dashboard</h2>
+    <p>สหกรณ์ออมทรัพย์<br>กรุณาใส่รหัสผ่านเพื่อเข้าใช้งาน<br><span style="color:var(--accent);font-size:11px;">หรือกด "ดู Dashboard" เพื่อดูเฉพาะหน้าหลัก</span></p>
+    <input type="password" class="lock-input" id="pin-input" maxlength="10"
+           placeholder="••••" oninput="clearErr()" onkeydown="if(event.key==='Enter')tryUnlock()">
+    <button class="lock-btn" onclick="tryUnlock()">🔓 เข้าใช้งาน</button>
+    <div class="lock-error" id="lock-err"></div>
+    <div class="lock-skip" onclick="skipLock()">ดู Dashboard (ไม่มีรหัส)</div>
+  </div>
+</div>
+
+<header>
+  <div class="hl">
+    <h1>📊 Financial Dashboard – สหกรณ์</h1>
+    <p id="lastUpdated">อัปเดต: 14/03/2026 · V1</p>
+  </div>
+  <div class="badge-row">
+    <div class="badge">2026</div>
+    <div class="lock-indicator" id="lock-indicator" onclick="showLock()">🔒</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" id="tab-main"      onclick="switchTab('main',this)">Dashboard</button>
+  <button class="tab locked" id="tab-reference" onclick="tabClickRef(this)">อ้างอิง</button>
+  <button class="tab locked" id="tab-history"   onclick="tabClickHist(this)">Historical</button>
+</div>
+
+<!-- ══════════════════════════════════
+     DASHBOARD PAGE (Input + Output)
+══════════════════════════════════ -->
+<div class="page active" id="page-main">
+
+  <div class="sl">ปรับค่า Input (ใส่เป็น %)</div>
+
+  <!-- Dividend Rate -->
+  <div class="input-panel">
+    <div class="ip-header">อัตราการจ่ายปันผลเฉลี่ย (%)</div>
+    <div class="ip-cols">
+      <div></div>
+      <div class="ipcl a1">A.1</div>
+      <div class="ipcl a2">A.2</div>
+      <div class="ipcl b">B</div>
+    </div>
+    <div class="ip-row">
+      <div class="ip-lbl">อัตราการจ่ายปันผลเฉลี่ย <small>Dividend Yield Avg</small></div>
+      <input type="number" step="0.01" min="0" max="100" class="ifield"   id="in-div-a1" value="5.57" oninput="markDirty()">
+      <input type="number" step="0.01" min="0" max="100" class="ifield p" id="in-div-a2" value="6.00" oninput="markDirty()">
+      <input type="number" step="0.01" min="0" max="100" class="ifield g" id="in-div-b"  value="6.00" oninput="markDirty()">
+    </div>
+  </div>
+
+  <!-- Yield on Loan -->
+  <div class="input-panel">
+    <div class="ip-header">Yield on Loan (%)</div>
+    <div class="ip-cols">
+      <div></div>
+      <div class="ipcl a1">A.1</div>
+      <div class="ipcl a2">A.2</div>
+      <div class="ipcl b">B</div>
+    </div>
+    <div class="ip-row">
+      <div class="ip-lbl">Yield on Loan <small>อัตราดอกเบี้ยเงินกู้</small></div>
+      <input type="number" step="0.01" min="0" max="100" class="ifield"   id="in-yield-a1" value="7.25" oninput="markDirty()">
+      <input type="number" step="0.01" min="0" max="100" class="ifield p" id="in-yield-a2" value="7.25" oninput="markDirty()">
+      <input type="number" step="0.01" min="0" max="100" class="ifield g" id="in-yield-b"  value="7.75" oninput="markDirty()">
+    </div>
+  </div>
+
+  <!-- NPL + Capital – combined panel -->
+  <div class="input-panel">
+    <div class="ip-header">สมมติฐาน NPL &amp; ทุนเรือนหุ้น</div>
+    <div class="ip-row single">
+      <div class="ip-lbl">อัตราการเพิ่มขึ้นของ NPL <small>ใช้ทุก Scenario</small></div>
+      <select id="in-npl" class="ifield y" oninput="markDirty()">
+        <option value="อัตราการเพิ่มขึ้นสูงที่สุด">สูงที่สุด</option>
+        <option value="อัตราการเพิ่มขึ้นเฉลี่ย">เฉลี่ย</option>
+        <option value="อัตราการเพิ่มขึ้นต่ำที่สุด">ต่ำที่สุด</option>
+      </select>
+    </div>
+    <div class="ip-row single">
+      <div class="ip-lbl">ประมาณการทุนเรือนหุ้นเพิ่มขึ้น <small>ใช้ Scenario A.1 &amp; A.2</small></div>
+      <select id="in-capital" class="ifield" oninput="markDirty()">
+        <option value="จำนวนการเพิ่มขึ้น">จำนวนการเพิ่มขึ้น</option>
+        <option value="อัตราการเพิ่มขึ้นสูงที่สุด">อัตราการเพิ่มขึ้นสูงที่สุด</option>
+        <option value="อัตราการเพิ่มขึ้นเฉลี่ย">อัตราการเพิ่มขึ้นเฉลี่ย</option>
+        <option value="อัตราการเพิ่มขึ้นต่ำที่สุด">อัตราการเพิ่มขึ้นต่ำที่สุด</option>
+      </select>
+    </div>
+    <div class="recalc-inline" id="recalc-bar">
+      <button class="btn-cancel" onclick="cancelChanges()">ยกเลิก</button>
+      <button class="btn-save"   onclick="applyRecalc()">✓ คำนวณใหม่</button>
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="sl" style="margin-top:18px;">Risk Appetite · Risk Tolerance · New Loan</div>
+  <div class="risk-band">
+    <div class="rc ra">
+      <div class="rlbl">Risk Appetite</div>
+      <div class="rval" id="ra-val">2,689 M</div>
+      <div class="rsub">ทุนเรือนหุ้น</div>
+    </div>
+    <div class="rc rt">
+      <div class="rlbl">Risk Tolerance</div>
+      <div class="rval" id="rt-val">2,830 M</div>
+      <div class="rsub">ทุนเรือนหุ้น</div>
+    </div>
+    <div class="rc nl">
+      <div class="rlbl">New Loan</div>
+      <div class="rval" id="nl-val">800 M</div>
+      <div class="rsub">ลูกหนี้ใหม่</div>
+    </div>
+  </div>
+
+  <div class="sl">ผลการจำลองฐานะ — เปรียบเทียบ 3 Scenarios</div>
+  <div class="sc-head">
+    <div class="sc-blank"></div>
+    <div class="sc-hc a1">Scenario A.1</div>
+    <div class="sc-hc a2">Scenario A.2</div>
+    <div class="sc-hc b">Scenario B</div>
+  </div>
+  <div class="sc-body" id="sc-body"></div>
+
+</div>
+
+<!-- ══════════════════════════════════
+     REFERENCE PAGE
+══════════════════════════════════ -->
+<div class="page" id="page-reference">
+  <div id="ref-lock-placeholder" class="locked-page">
+    <div class="lp-icon">🔒</div>
+    <h3>ต้องการรหัสผ่าน</h3>
+    <p>หน้านี้สำหรับผู้มีสิทธิ์เข้าถึงเท่านั้น กรุณาใส่รหัสผ่านเพื่อดูข้อมูลอ้างอิง</p>
+    <button class="btn-unlock" onclick="showLock()">🔓 ใส่รหัสผ่าน</button>
+  </div>
+  <div id="ref-content" style="display:none;">
+    <div class="sl">ค่าคงที่ในโมเดล</div>
+    <div class="ig">
+      <div class="ref-row"><div class="ref-lbl">ค่าใช้จ่ายอื่น (% ของรายได้ดอกเบี้ย)</div><div class="ref-val">1.50%</div></div>
+      <div class="ref-row"><div class="ref-lbl">เงินสดจ่ายเงินปันผล (% ของกำไรสุทธิ)</div><div class="ref-val">75.00%</div></div>
+      <div class="ref-row"><div class="ref-lbl">สินทรัพย์รวม (ปัจจุบัน)</div><div class="ref-val">18.25 พัน MB</div></div>
+      <div class="ref-row"><div class="ref-lbl">อัตราการชำระคืน (ทุก Scenario)</div><div class="ref-val">50.00%</div></div>
+    </div>
+
+    <div class="sl">อัตราการจ่ายคืนดอกเบี้ยรับ / รายได้ดอกเบี้ย (%)</div>
+    <div class="ig">
+      <div class="ip-header" style="font-size:9px;padding:7px 13px;">แก้ไขได้เฉพาะผู้มีสิทธิ์ · ใส่เป็น %</div>
+      <!-- col headers -->
+      <div style="display:grid;grid-template-columns:1fr 85px 85px 85px;padding:5px 13px 0;gap:6px;">
+        <div></div>
+        <div class="ipcl a1" style="text-align:center;font-size:9px;font-family:var(--mono);font-weight:700;color:var(--a1);">A.1</div>
+        <div class="ipcl a2" style="text-align:center;font-size:9px;font-family:var(--mono);font-weight:700;color:var(--a2);">A.2</div>
+        <div class="ipcl b"  style="text-align:center;font-size:9px;font-family:var(--mono);font-weight:700;color:var(--b);">B</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 85px 85px 85px;align-items:center;padding:9px 13px;gap:6px;">
+        <div style="font-size:12px;color:var(--text);line-height:1.3;">อัตราจ่ายคืนดอกเบี้ยรับ <small style="display:block;font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:1px;">/ รายได้ดอกเบี้ย</small></div>
+        <input type="number" step="0.01" min="0" max="100" class="ifield"   id="ref-ib-a1" value="2.98" oninput="markRefDirty()">
+        <input type="number" step="0.01" min="0" max="100" class="ifield p" id="ref-ib-a2" value="2.50" oninput="markRefDirty()">
+        <input type="number" step="0.01" min="0" max="100" class="ifield g" id="ref-ib-b"  value="2.50" oninput="markRefDirty()">
+      </div>
+      <div class="recalc-inline" id="ref-recalc-bar">
+        <button class="btn-cancel" onclick="cancelRefChanges()">ยกเลิก</button>
+        <button class="btn-save"   onclick="applyRefRecalc()">✓ บันทึกและคำนวณใหม่</button>
+      </div>
+    </div>
+
+    <div class="sl">Index NPL – อัตราการเพิ่มขึ้น</div>
+    <div class="ig">
+      <div class="ref-row"><div class="ref-lbl">อัตราสูงสุด</div><div class="ref-val">0.2896%</div></div>
+      <div class="ref-row"><div class="ref-lbl">อัตราเฉลี่ย</div><div class="ref-val">0.1330%</div></div>
+      <div class="ref-row"><div class="ref-lbl">อัตราต่ำสุด</div><div class="ref-val">0.0158%</div></div>
+    </div>
+
+    <div class="sl">ประมาณการทุนเรือนหุ้น (ล้านบาท)</div>
+    <div class="ig tscroll">
+      <table class="ptable">
+        <thead><tr><th>สมมติฐาน</th><th class="c0">T (2025)</th><th class="c1">T+1</th><th class="c2">T+2</th><th class="c3">T+3</th></tr></thead>
+        <tbody>
+          <tr><td>อัตราสูงสุด</td>     <td class="c0">2,339.0</td><td class="c1">2,830.4</td><td class="c2">3,424.9</td><td class="c3">4,144.4</td></tr>
+          <tr><td>อัตราเฉลี่ย</td>     <td class="c0">2,339.0</td><td class="c1">2,711.2</td><td class="c2">3,142.6</td><td class="c3">3,969.9</td></tr>
+          <tr><td>อัตราต่ำสุด</td>     <td class="c0">2,339.0</td><td class="c1">2,628.8</td><td class="c2">2,954.5</td><td class="c3">3,320.6</td></tr>
+          <tr><td>จำนวนการเพิ่มขึ้น</td><td class="c0">2,339.0</td><td class="c1">2,689.0</td><td class="c2">3,039.0</td><td class="c3">3,389.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sl">ประมาณการลูกหนี้สุทธิ (ล้านบาท)</div>
+    <div class="ig tscroll">
+      <table class="ptable">
+        <thead><tr><th>สมมติฐาน</th><th class="c0">T (2025)</th><th class="c1">T+1</th><th class="c2">T+2</th><th class="c3">T+3</th></tr></thead>
+        <tbody>
+          <tr><td>อัตราสูงสุด</td>     <td class="c0">2,418.3</td><td class="c1">2,865.4</td><td class="c2">3,395.1</td><td class="c3">4,022.8</td></tr>
+          <tr><td>อัตราเฉลี่ย</td>     <td class="c0">2,418.3</td><td class="c1">2,803.8</td><td class="c2">3,250.8</td><td class="c3">3,769.0</td></tr>
+          <tr><td>อัตราต่ำสุด</td>     <td class="c0">2,418.3</td><td class="c1">2,671.8</td><td class="c2">2,951.9</td><td class="c3">3,261.3</td></tr>
+          <tr><td>จำนวนการเพิ่มขึ้น</td><td class="c0">2,418.3</td><td class="c1">2,768.3</td><td class="c2">3,118.3</td><td class="c3">3,468.3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     HISTORICAL PAGE
+══════════════════════════════════ -->
+<div class="page" id="page-history">
+  <div id="hist-lock-placeholder" class="locked-page">
+    <div class="lp-icon">🔒</div>
+    <h3>ต้องการรหัสผ่าน</h3>
+    <p>หน้านี้สำหรับผู้มีสิทธิ์เข้าถึงเท่านั้น กรุณาใส่รหัสผ่านเพื่อดูข้อมูลย้อนหลัง</p>
+    <button class="btn-unlock" onclick="showLock()">🔓 ใส่รหัสผ่าน</button>
+  </div>
+  <div id="hist-content" style="display:none;">
+    <div class="sl">ข้อมูลย้อนหลัง (2021–2025)</div>
+    <div class="ig tscroll">
+      <table class="htable">
+        <thead><tr><th>รายการ</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>2025</th></tr></thead>
+        <tbody>
+          <tr><td>รายได้ดอกเบี้ยรับ (M)</td><td>81.8</td><td>90.0</td><td>108.3</td><td>127.0</td><td>145.2</td></tr>
+          <tr><td>หัก คชจ.อื่น (M)</td><td>1.6</td><td>2.3</td><td>3.1</td><td>5.0</td><td>7.6</td></tr>
+          <tr><td>กำไรสุทธิ (M)</td><td>80.2</td><td>87.7</td><td>105.2</td><td>122.0</td><td>137.6</td></tr>
+          <tr><td>ลูกหนี้สุทธิ (M)</td><td>1,340.4</td><td>1,480.9</td><td>1,748.6</td><td>2,071.9</td><td>2,418.3</td></tr>
+          <tr><td>ทุนเรือนหุ้น (M)</td><td>1,297.9</td><td>1,570.6</td><td>1,783.9</td><td>2,005.0</td><td>2,339.0</td></tr>
+          <tr><td>สินทรัพย์รวม (M)</td><td>1,414.1</td><td>1,702.4</td><td>2,199.4</td><td>2,181.6</td><td>2,552.3</td></tr>
+          <tr><td>NPL (M)</td><td>0.21</td><td>0.68</td><td>2.03</td><td>6.00</td><td>4.78</td></tr>
+          <tr><td>เงินสดจ่ายปันผล (M)</td><td>0</td><td>68.6</td><td>75.7</td><td>91.0</td><td>104.6</td></tr>
+          <tr><td>เงินฝากธนาคาร (M)</td><td>72.9</td><td>220.1</td><td>461.9</td><td>109.6</td><td>124.6</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sl">แก้ไขข้อมูล Backup</div>
+    <a id="gsheet-link" class="gcard" href="#" onclick="openGSheet(event)">
+      <div class="gicon">📋</div>
+      <div class="gtext">
+        <h3>เปิด Google Sheets Backup</h3>
+        <p>แก้ไขข้อมูลต้นฉบับ / อัปเดตตัวเลขได้ที่นี่</p>
+      </div>
+    </a>
+    <div class="ig">
+      <div style="padding:10px 13px;display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:12px;color:var(--text);">วาง Google Sheets URL:</div>
+        <input type="url" id="gsheet-url-input" class="ifield"
+          style="width:100%;text-align:left;font-size:11px;color:var(--b);"
+          placeholder="https://docs.google.com/spreadsheets/d/..."
+          oninput="saveGSheetUrl()">
+      </div>
+    </div>
+    <div class="info-box">
+      <strong>วิธีใช้:</strong><br>
+      1. Upload .xlsx → Google Drive → เปิดเป็น Google Sheets<br>
+      2. คัดลอก URL วางด้านบน กดปุ่มสีเขียวเพื่อเปิดได้เลย<br>
+      3. แก้ตัวเลขใน Google Sheets แล้วกลับมาแก้ Input ที่ Dashboard
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   CONSTANTS & REFERENCE DATA
+═══════════════════════════════════════ */
+// NPL rates lookup (matches Input!B4 text values)
+const NPL_MAP = {
+  'อัตราการเพิ่มขึ้นสูงที่สุด': 0.002895554,
+  'อัตราการเพิ่มขึ้นเฉลี่ย':    0.001329997,
+  'อัตราการเพิ่มขึ้นต่ำที่สุด': 0.000157764,
+};
+
+// ทุนเรือนหุ้น T+1 lookup (ข้อมูลอ้างอิง C16:C19)
+const SHARE_MAP = {
+  'อัตราการเพิ่มขึ้นสูงที่สุด': 2830379943.80,
+  'อัตราการเพิ่มขึ้นเฉลี่ย':    2711197027.38,
+  'อัตราการเพิ่มขึ้นต่ำที่สุด': 2628832458.35,
+  'จำนวนการเพิ่มขึ้น':          2689029580,
+};
+
+// Scenario B always uses อัตราการเพิ่มขึ้นสูงที่สุด (Financial Model_V3 D29 = C16)
+const SHARE_B = 2830379943.80;
+
+const OPEX = 0.015;
+const CASH_RATIO = 0.75;
+const REPAY_RATE  = 0.5;
+
+const LOAN_CURRENT = 2418333772.8;
+const NEW_LOAN_MB  = 800;
+const LOAN_T1 = LOAN_CURRENT + (NEW_LOAN_MB*1e6) - (NEW_LOAN_MB*1e6)*REPAY_RATE;
+
+// Risk band: RA = จำนวนการเพิ่มขึ้น, RT = สูงที่สุด
+const RA_VAL = 2689029580;
+const RT_VAL = 2830379943.8;
+
+// Read intBack from ref inputs (editable by admin in อ้างอิง page)
+function getIntBack(){
+  return {
+    a1: (parseFloat(document.getElementById('ref-ib-a1').value)||2.98)/100,
+    a2: (parseFloat(document.getElementById('ref-ib-a2').value)||2.50)/100,
+    b:  (parseFloat(document.getElementById('ref-ib-b').value) ||2.50)/100,
+  };
+}
+
+/* ═══════════════════════════════════════
+   CALCULATION (mirrors Financial Model_V3)
+═══════════════════════════════════════ */
+// Row 13: อัตราการจ่ายเงินปันผล/ทุนเรือนหุ้น = (divRate + 0.738*intBack) / 1.738
+// Row 17: รายได้ดอกเบี้ยรับ = Yield * ลูกหนี้สุทธิ
+// Row 18: หัก คชจ.อื่น = Row17 * 0.015
+// Row 19: หัก NPL = NPL_rate * ลูกหนี้สุทธิ
+// Row 20: กำไรสุทธิ(จากการดำเนินงาน) = 17-18-19
+// Row 21: หัก ปันผลดอกเบี้ยเงินให้กู้ = intBack * Row17
+// Row 22: กำไรสุทธิเพื่อจ่ายปันผล = 20-21
+// Row 30: เงินสดจ่ายเงินปันผล = ทุนเรือนหุ้น(T+1) * Row13
+// Row 23: กำไรขั้นต่ำ = Row30 / 0.75
+// status: Row22 > Row23 → เพียงพอ
+// Row 31: Yield ก่อนหัก NPL = Row23 / ลูกหนี้สุทธิ
+// Row 32: Yield หลังหัก NPL = (Row17-Row19) / ลูกหนี้สุทธิ
+
+function calcSc(yld, divRate, intBack, share, nplRate, loan){
+  const r13 = (divRate + 0.738*intBack) / 1.738;
+  const r17 = yld * loan;
+  const r18 = OPEX * r17;
+  const r19 = nplRate * loan;
+  const r20 = r17 - r18 - r19;
+  const r21 = intBack * r17;
+  const r22 = r20 - r21;
+  const r30 = share * r13;
+  const r23 = r30 / CASH_RATIO;
+  const r28 = r17 * ASSETS_MULT;
+  const r31 = r23 / loan;
+  const r32 = (r17 - r19) / loan;
+  return {
+    divRate, yieldLoan:yld,
+    interest: r17,
+    opex: r18,
+    npl: r19,
+    profitOp: r20,
+    intPaid: r21,
+    profitNet: r22,
+    dividend: r30,
+    minProfit: r23,
+    assets: r28,
+    yield1: r31,
+    yield2: r32,
+    nplPct: nplRate,
+    loan, share,
+    status: r22 > r23 ? 'เพียงพอ' : 'ไม่เพียงพอ',
+  };
+}
+
+function recalcAll(){
+  const pct = id => (parseFloat(document.getElementById(id).value)||0)/100;
+  const nplKey    = document.getElementById('in-npl').value;
+  const nplRate   = NPL_MAP[nplKey] || NPL_MAP['อัตราการเพิ่มขึ้นสูงที่สุด'];
+  const capitalKey = document.getElementById('in-capital').value;
+  const shareRA   = SHARE_MAP[capitalKey] || SHARE_MAP['จำนวนการเพิ่มขึ้น'];
+  const shareRT   = SHARE_B;
+  const ib        = getIntBack();
+
+  return {
+    A1: calcSc(pct('in-yield-a1'), pct('in-div-a1'), ib.a1, shareRA, nplRate, LOAN_T1),
+    A2: calcSc(pct('in-yield-a2'), pct('in-div-a2'), ib.a2, shareRA, nplRate, LOAN_T1),
+    B:  calcSc(pct('in-yield-b'),  pct('in-div-b'),  ib.b,  shareRT, nplRate, LOAN_T1),
+  };
+}
+
+/* ═══════════════════════════════════════
+   RENDER OUTPUT
+═══════════════════════════════════════ */
+const fM  = v => (v/1e6).toFixed(2)+' M';
+const fP  = v => (v*100).toFixed(2)+'%';
+const fP2 = v => (v*100).toFixed(2)+'%';
+const fMB = v => (v/1e6).toFixed(2)+' M';
+
+// สินทรัพย์รวม multiplier (ข้อมูลอ้างอิง B4)
+const ASSETS_MULT = 18.25446178140263;
+
+function renderOutput(){
+  const d = recalcAll();
+
+  // Risk Appetite = ทุนเรือนหุ้น A.1 (B29 = ตาม capital dropdown)
+  // Risk Tolerance = ทุนเรือนหุ้น B (D29 = สูงที่สุดเสมอ)
+  document.getElementById('ra-val').textContent = fMB(d.A1.share);
+  document.getElementById('rt-val').textContent = fMB(d.B.share);
+  document.getElementById('nl-val').textContent = NEW_LOAN_MB+' M';
+
+  const ROWS = [
+    {g:'สถานะ'},
+    {l:'เงินสดคงเหลือจ่ายเงินปันผล',
+     f:x=>x.status==='เพียงพอ'?'<span class="ok">✓ เพียงพอ</span>':'<span class="bad">✗ ไม่เพียงพอ</span>'},
+    {g:'Input สมมติฐาน'},
+    {l:'อัตราการจ่ายปันผลเฉลี่ย',       f:x=>fP2(x.divRate)},
+    {l:'Yield on Loan',                    f:x=>fP2(x.yieldLoan)},
+    {g:'รายได้ & กำไร'},
+    {l:'รายได้ดอกเบี้ยรับ',              f:x=>fM(x.interest)},
+    {l:'หัก คชจ.อื่น',                   f:x=>fM(x.opex)},
+    {l:'หัก NPL',                         f:x=>fM(x.npl)},
+    {l:'กำไรสุทธิ (จากดำเนินงาน)',        f:x=>fM(x.profitOp)},
+    {l:'หัก ปันผลดอกเบี้ยเงินให้กู้',    f:x=>fM(x.intPaid)},
+    {l:'กำไรสุทธิ (เพื่อจ่ายปันผล)',     f:x=>fM(x.profitNet)},
+    {l:'กำไรขั้นต่ำ (สำหรับจ่ายปันผล)',  f:x=>fM(x.minProfit)},
+    {l:'เงินสดจ่ายเงินปันผล',            f:x=>fM(x.dividend)},
+    {g:'Yield'},
+    {l:'Yield (ก่อนหัก NPL)',             f:x=>fP(x.yield1)},
+    {l:'Yield (หลังหัก NPL)',             f:x=>fP(x.yield2)},
+    {g:'NPL'},
+    {l:'NPL (บาท)',                       f:x=>fM(x.npl)},
+    {l:'NPL%',                            f:x=>fP(x.nplPct)},
+    {g:'ฐานะการเงิน'},
+    {l:'ลูกหนี้สุทธิ',                   f:x=>fM(x.loan)},
+    {l:'ทุนเรือนหุ้น',                   f:x=>fM(x.share)},
+    {l:'สินทรัพย์รวม',                   f:x=>fM(x.assets)},
+  ];
+
+  document.getElementById('sc-body').innerHTML = ROWS.map(r=>{
+    if(r.g) return`<div class="sc-row grp"><div class="sc-cell glbl">${r.g}</div></div>`;
+    return`<div class="sc-row">
+      <div class="sc-cell lbl">${r.l}</div>
+      <div class="sc-cell val v1">${r.f(d.A1)}</div>
+      <div class="sc-cell val v2">${r.f(d.A2)}</div>
+      <div class="sc-cell val vb">${r.f(d.B)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════
+   DIRTY / SAVE
+═══════════════════════════════════════ */
+let isDirty = false;
+function markDirty(){ isDirty=true; document.getElementById('recalc-bar').classList.add('show'); }
+function applyRecalc(){
+  isDirty=false; document.getElementById('recalc-bar').classList.remove('show');
+  renderOutput(); showToast('✓ คำนวณใหม่เรียบร้อย'); saveToLocal();
+}
+function cancelChanges(){
+  isDirty=false; document.getElementById('recalc-bar').classList.remove('show');
+  loadFromLocal(); renderOutput();
+}
+
+function markRefDirty(){
+  document.getElementById('ref-recalc-bar').classList.add('show');
+}
+function applyRefRecalc(){
+  document.getElementById('ref-recalc-bar').classList.remove('show');
+  renderOutput();
+  showToast('✓ บันทึกและคำนวณใหม่เรียบร้อย');
+  saveToLocal();
+}
+function cancelRefChanges(){
+  document.getElementById('ref-recalc-bar').classList.remove('show');
+  loadFromLocal();
+}
+
+/* ═══════════════════════════════════════
+   LOCAL STORAGE
+═══════════════════════════════════════ */
+function saveToLocal(){
+  try{localStorage.setItem('saha_v5',JSON.stringify({
+    divA1:document.getElementById('in-div-a1').value,
+    divA2:document.getElementById('in-div-a2').value,
+    divB: document.getElementById('in-div-b').value,
+    yA1:  document.getElementById('in-yield-a1').value,
+    yA2:  document.getElementById('in-yield-a2').value,
+    yB:   document.getElementById('in-yield-b').value,
+    npl:  document.getElementById('in-npl').value,
+    cap:  document.getElementById('in-capital').value,
+    ibA1: document.getElementById('ref-ib-a1').value,
+    ibA2: document.getElementById('ref-ib-a2').value,
+    ibB:  document.getElementById('ref-ib-b').value,
+    gs:   document.getElementById('gsheet-url-input').value,
+    upd:  new Date().toLocaleDateString('th-TH'),
+  }));}catch(e){}
+}
+function loadFromLocal(){
+  try{
+    const s=JSON.parse(localStorage.getItem('saha_v5')||'{}');
+    const set=(id,v)=>{if(v!=null)document.getElementById(id).value=v;};
+    set('in-div-a1',s.divA1);set('in-div-a2',s.divA2);set('in-div-b',s.divB);
+    set('in-yield-a1',s.yA1);set('in-yield-a2',s.yA2);set('in-yield-b',s.yB);
+    set('in-npl',s.npl);
+    set('in-capital',s.cap);
+    set('ref-ib-a1',s.ibA1);
+    set('ref-ib-a2',s.ibA2);
+    set('ref-ib-b', s.ibB);
+    if(s.gs){set('gsheet-url-input',s.gs);document.getElementById('gsheet-link').href=s.gs;}
+    if(s.upd)document.getElementById('lastUpdated').textContent='อัปเดต: '+s.upd+' · V1';
+  }catch(e){}
+}
+function saveGSheetUrl(){
+  const u=document.getElementById('gsheet-url-input').value;
+  document.getElementById('gsheet-link').href=u||'#'; saveToLocal();
+}
+function openGSheet(e){
+  const u=document.getElementById('gsheet-url-input').value;
+  if(!u||u==='#'){e.preventDefault();showToast('⚠️ กรุณาใส่ URL Google Sheets ก่อน');}
+}
+
+/* ═══════════════════════════════════════
+   PASSWORD / LOCK
+═══════════════════════════════════════ */
+const PASS = '1234';
+let isUnlocked = false;
+
+function tryUnlock(){
+  const val = document.getElementById('pin-input').value;
+  if(val === PASS){
+    isUnlocked = true;
+    document.getElementById('lock-overlay').style.display='none';
+    document.getElementById('lock-indicator').textContent='🔓';
+    enableLockedTabs();
+    showToast('🔓 เข้าใช้งานสำเร็จ');
+    try{sessionStorage.setItem('saha_unlocked','1');}catch(e){}
+  } else {
+    document.getElementById('lock-err').textContent='รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่';
+    document.getElementById('pin-input').value='';
+  }
+}
+function clearErr(){ document.getElementById('lock-err').textContent=''; }
+
+function skipLock(){
+  document.getElementById('lock-overlay').style.display='none';
+  showToast('ดู Dashboard เท่านั้น (ไม่มีรหัส)');
+}
+
+function showLock(){
+  document.getElementById('lock-overlay').style.display='flex';
+  document.getElementById('pin-input').value='';
+  document.getElementById('lock-err').textContent='';
+  setTimeout(()=>document.getElementById('pin-input').focus(),100);
+}
+
+function enableLockedTabs(){
+  document.getElementById('tab-reference').classList.remove('locked');
+  document.getElementById('tab-history').classList.remove('locked');
+  // show content, hide placeholders
+  document.getElementById('ref-lock-placeholder').style.display='none';
+  document.getElementById('ref-content').style.display='block';
+  document.getElementById('hist-lock-placeholder').style.display='none';
+  document.getElementById('hist-content').style.display='block';
+}
+
+function tabClickRef(el){
+  if(!isUnlocked){ showLock(); return; }
+  switchTab('reference',el);
+}
+function tabClickHist(el){
+  if(!isUnlocked){ showLock(); return; }
+  switchTab('history',el);
+}
+
+/* ═══════════════════════════════════════
+   TABS
+═══════════════════════════════════════ */
+function switchTab(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+/* ═══════════════════════════════════════
+   TOAST
+═══════════════════════════════════════ */
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+// restore session unlock
+try{if(sessionStorage.getItem('saha_unlocked')==='1'){
+  isUnlocked=true;
+  document.getElementById('lock-overlay').style.display='none';
+  document.getElementById('lock-indicator').textContent='🔓';
+  enableLockedTabs();
+}}catch(e){}
+
+loadFromLocal();
+renderOutput();
+</script>
+</body>
+</html>
